@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="styles/styles.css" />
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo" id="dashboardLogo">
+                <img src="assets/drive-icon.png" alt="Drive Logo" />
+            </div>
+            <nav class="nav-links">
+                <ul>
+                    <li>
+                        <a href="#" id="homeLink" class="active">
+                            <img src="./assets/house-solid.svg" alt="Home Icon" class="nav-icon" />
+                            Home
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" id="myDriveLink">
+                            <img src="./assets/folder-solid.svg" alt="Folder Icon" class="nav-icon" />
+                            Secure Upload
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" id="starredLink">
+                            <img src="./assets/star-regular.svg" alt="Star Icon" class="nav-icon" />
+                            Secure Download
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" id="trashLink">
+                            <img src="./assets/trash-solid.svg" alt="Trash Icon" class="nav-icon" />
+                            Trash
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+        <main class="content">
+            <header class="content-header">
+                <h2 id="sectionTitle">Welcome to Drive</h2>
+                <div class="header-actions">
+                    <input type="text" placeholder="Search in Drive" id="searchBar" />
+                    <button id="newButton" class="new-btn">+ New</button>
+                </div>
+            </header>
+
+            <section class="dashboard-cards">
+                <div class="card total-storage">
+                    <div class="card-header">
+                        <h3>Total Storage</h3>
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <p class="card-value">15.8 GB / 20 GB</p>
+                    <p class="card-subtext">3 GB free</p>
+                </div>
+                <div class="card files">
+                    <div class="card-header">
+                        <h3>Files</h3>
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <p class="card-value">1,234</p>
+                    <p class="card-subtext">+20 this week</p>
+                </div>
+                <div class="card shared-files">
+                    <div class="card-header">
+                        <h3>Shared Files</h3>
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <p class="card-value">56</p>
+                    <p class="card-subtext">Shared with 15 people</p>
+                </div>
+            </section>
+
+            <section id="fileSection" class="file-section">
+                <h3>Your Google Drive Files</h3>
+                <div class="file-filters">
+                    <button class="filter-btn active">All</button>
+                    <button class="filter-btn">Files</button>
+                    <button class="filter-btn">Folders</button>
+                </div>
+                <div id="fileList" class="file-list">
+                    <!-- Files will be dynamically added here -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal Popup for Uploading Files and Folders -->
+    <div id="uploadModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Upload</h2>
+            <button id="uploadFileBtn">Upload File</button>
+            <button id="uploadFolderBtn">Upload Folder</button>
+        </div>
+    </div>
+
+    <script src="https://kit.fontawesome.com/7f339140d6.js" crossorigin="anonymous"></script>
+    <script src="scripts/dashboard.js"></script>
+</body>
+</html>
