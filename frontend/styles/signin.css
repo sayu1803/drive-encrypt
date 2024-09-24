@@ -89,3 +89,9 @@ body {
         transform: translateY(0);
     }
 }
+
+.login-message {
+    margin-top: 15px;
+    text-align: center;
+    font-size: 14px;
+}

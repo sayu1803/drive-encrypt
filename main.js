@@ -71,3 +71,5 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
     if (server) server.kill('SIGTERM');
 });
+
+

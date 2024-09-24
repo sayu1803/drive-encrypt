@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dashboard</title>
     <link rel="stylesheet" href="styles/styles.css" />
+    <script src="https://kit.fontawesome.com/7f339140d6.js" crossorigin="anonymous"></script>
 </head>
 <body>
     <div class="dashboard-container">
@@ -46,7 +47,32 @@
                 <h2 id="sectionTitle">Welcome to Drive</h2>
                 <div class="header-actions">
                     <input type="text" placeholder="Search in Drive" id="searchBar" />
-                    <button id="newButton" class="new-btn">+ New</button>
+                    <div class="profile-dropdown-container">
+                        <button id="profileToggle" class="profile-toggle">
+                            <img id="profileIconImage" src="assets/default-profile-icon.png" alt="Profile" class="profile-icon-image">
+                        </button>
+                        <div id="profileDropdown" class="profile-dropdown">
+                            <div class="profile-info">
+                                <img id="profilePicture" src="assets/default-profile-icon.png" alt="Profile Picture" class="profile-picture">
+                                <h3 id="profileName">John Doe</h3>
+                                <p id="profileEmail">johndoe@example.com</p>
+                            </div>
+                            <div class="profile-options">
+                                <button id="darkModeToggle" class="profile-option">
+                                    <i class="fas fa-moon"></i>
+                                    Dark Mode
+                                </button>
+                                <button id="settingsButton" class="profile-option">
+                                    <i class="fas fa-cog"></i>
+                                    Settings
+                                </button>
+                                <button id="signOutButton" class="profile-option sign-out">
+                                    <i class="fas fa-sign-out-alt"></i>
+                                    Sign Out
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </header>
 
@@ -54,17 +80,20 @@
                 <div class="card total-storage">
                     <div class="card-header">
                         <h3>Total Storage</h3>
-                        <i class="fas fa-clock"></i>
+                        <i class="fas fa-hdd"></i>
                     </div>
-                    <p class="card-value">15.8 GB / 20 GB</p>
-                    <p class="card-subtext">3 GB free</p>
+                    <p class="card-value" id="totalStorageValue"></p>
+                    <p class="card-subtext" id="totalStorageSubtext"></p>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar"></div>
+                    </div>
                 </div>
                 <div class="card files">
                     <div class="card-header">
-                        <h3>Files</h3>
+                        <h3>Confidential Files</h3>
                         <i class="fas fa-file-alt"></i>
                     </div>
-                    <p class="card-value">1,234</p>
+                    <p class="card-value">20</p>
                     <p class="card-subtext">+20 this week</p>
                 </div>
                 <div class="card shared-files">
@@ -83,11 +112,17 @@
                     <button class="filter-btn active">All</button>
                     <button class="filter-btn">Files</button>
                     <button class="filter-btn">Folders</button>
+                    <button id="toggleViewButton" class="filter-btn toggle-view-btn">
+                        <img src="assets/file-icons/grid-icon.png" alt="Toggle View" id="toggleViewIcon" height="20" width="20"/>
+                    </button>
                 </div>
                 <div id="fileList" class="file-list">
                     <!-- Files will be dynamically added here -->
                 </div>
             </section>
+            <button id="uploadButton" class="upload-btn" aria-label="Upload">
+                <i class="fas fa-plus"></i>
+            </button>
         </main>
     </div>
 
@@ -101,7 +136,10 @@
         </div>
     </div>
 
-    <script src="https://kit.fontawesome.com/7f339140d6.js" crossorigin="anonymous"></script>
+    
+    
+
+    <!-- <script src="https://kit.fontawesome.com/7f339140d6.js" crossorigin="anonymous"></script> -->
     <script src="scripts/dashboard.js"></script>
 </body>
 </html>
