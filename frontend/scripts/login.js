@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateLoginMessage(message, isError = false) {
         loginMessage.textContent = message;
-        loginMessage.style.color = isError ? 'red' : 'blue';
+        loginMessage.style.color = isError ? 'red' : '#2f7283';
     }
 
     function checkAuthentication() {

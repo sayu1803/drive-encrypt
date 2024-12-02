@@ -10,9 +10,7 @@ import bodyParser from 'body-parser';
 import mime from 'mime-types';
 import multer from 'multer';
 import cors from 'cors';
-
 import crypto from 'crypto';
-import CryptoJS from 'crypto-js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -68,6 +66,7 @@ const upload = multer({
   },
 });
 
+const ENCRYPTION_KEYS_FILE = path.join(__dirname, 'encryption_keys.json');
 
 app.get("/auth/google", (req, res) => {
   const authUrl = oauth2Client.generateAuthUrl({
@@ -107,84 +106,125 @@ app.get("/google/redirect", async (req, res) => {
 // Route to fetch files from Google Drive
 app.get("/listFiles", async (req, res) => {
   try {
-    const { filter } = req.query; // 'all', 'files', 'folders'
-    const drive = google.drive({ version: "v3", auth: oauth2Client });
+      const { filter } = req.query;
+      const drive = google.drive({ version: "v3", auth: oauth2Client });
 
-    const response = await drive.files.list({
-      pageSize: 20,
-      fields: "files(id, name, mimeType, webViewLink, iconLink, thumbnailLink)",
-    });
+      const response = await drive.files.list({
+          pageSize: 30,
+          fields: "files(id, name, mimeType, webViewLink, webContentLink, thumbnailLink, iconLink, size, modifiedTime, owners, properties)",
+      });
 
-    let files = response.data.files;
+      let files = response.data.files;
 
-    if (filter === 'files') {
-      files = files.filter(file => file.mimeType !== 'application/vnd.google-apps.folder');
-    } else if (filter === 'folders') {
-      files = files.filter(file => file.mimeType === 'application/vnd.google-apps.folder');
-    }
+      if (filter === 'files') {
+          files = files.filter(file => file.mimeType !== 'application/vnd.google-apps.folder');
+      } else if (filter === 'folders') {
+          files = files.filter(file => file.mimeType === 'application/vnd.google-apps.folder');
+      } else if (filter === 'secure') {
+        files = files.filter(file => file.properties && file.properties.encrypted === 'true');
+      }
 
-    if (files.length === 0) {
-      res.json({ message: "No files found." });
-    } else {
-      res.json(files);
-    }
+      // Add encrypted property to the file objects
+      files = files.map(file => ({
+          ...file,
+          encrypted: file.properties && file.properties.encrypted === 'true'
+      }));
+
+      if (files.length === 0) {
+          res.json({ message: "No files found." });
+      } else {
+          res.json(files);
+      }
   } catch (error) {
-    console.error("Error fetching files:", error.message);
-    res.status(500).send("Failed to retrieve files.");
+      console.error("Error fetching files:", error.message);
+      res.status(500).send("Failed to retrieve files.");
+  }
+});   
+
+app.get("/api/searchDrive", async (req, res) => {
+  try {
+      const { q } = req.query;
+      const drive = google.drive({ version: "v3", auth: oauth2Client });
+
+      const response = await drive.files.list({
+          q: `fullText contains '${q}'`,
+          fields: "files(id, name, mimeType, webViewLink, modifiedTime, size, owners)",
+          pageSize: 30,
+      });
+
+      const files = response.data.files.map(file => ({
+          ...file,
+          source: 'drive',
+          webContentLink: file.webViewLink,
+          properties: { encrypted: false }
+      }));
+
+      res.json(files);
+  } catch (error) {
+      console.error("Error searching Drive:", error);
+      res.status(500).json({ error: "Failed to search Drive" });
   }
 });
 
 app.post("/uploadFile", upload.single('file'), async (req, res) => {
   try {
-    const file = req.file;
+      const file = req.file;
+      const encryptionKey = req.body.encryptionKey;
+      const isEncrypted = req.body.isEncrypted === 'true';
+      const metadata = JSON.parse(req.body.metadata || '{}');
 
-    // Check if a file was uploaded
-    if (!file) {
-      console.error("No file uploaded. Check if the file input was correct.");
-      return res.status(400).send("No file uploaded.");
-    }
+      if (!file) {
+          console.error("No file uploaded.");
+          return res.status(400).send("No file uploaded.");
+      }
 
-    // Log file details
-    console.log("File details:", file);
+      console.log("File details:", file);
 
-    // Ensure MIME type is detected correctly
-    const mimeType = mime.lookup(file.originalname) || "application/octet-stream";
-    console.log(`Uploading file with MIME type: ${mimeType}`);
+      const mimeType = isEncrypted ? 'application/octet-stream' : (mime.lookup(file.originalname) || "application/octet-stream");
+      console.log(`Uploading file with MIME type: ${mimeType}`);
 
-    // Authenticate Google Drive API
-    const drive = google.drive({ version: "v3", auth: oauth2Client });
+      const drive = google.drive({ version: "v3", auth: oauth2Client });
 
-    // Attempt to upload the file to Google Drive
-    const response = await drive.files.create({
-      requestBody: {
-        name: file.originalname,
-        mimeType: mimeType,
-      },
-      media: {
-        mimeType: mimeType,
-        body: fs.createReadStream(file.path),
-      },
-    });
+      const fileContent = fs.createReadStream(file.path);
 
-    // Check if upload was successful
-    console.log("Google Drive response:", response.data);
+      const fileMetadata = {
+          name: file.originalname,
+          mimeType: mimeType,
+          properties: {
+              ...metadata.properties,
+              encrypted: isEncrypted,
+              originalMimeType: metadata.properties.originalMimeType || mimeType
+          }
+      };
 
-    // Remove the uploaded file from local storage after successful upload
-    fs.unlinkSync(file.path);
-    console.log("File uploaded successfully with ID:", response.data.id);
-    res.send(`File uploaded successfully with ID: ${response.data.id}`);
+      const media = {
+          mimeType: mimeType,
+          body: fileContent
+      };
+
+      const response = await drive.files.create({
+          resource: fileMetadata,
+          media: media,
+          fields: 'id'
+      });
+
+      fs.unlinkSync(file.path);
+      console.log("File uploaded successfully with ID:", response.data.id);
+
+      if (isEncrypted) {
+          const keyStoragePath = path.join(__dirname, 'encryption_keys.json');
+          let keys = {};
+          if (fs.existsSync(keyStoragePath)) {
+              keys = JSON.parse(fs.readFileSync(keyStoragePath, 'utf8'));
+          }
+          keys[response.data.id] = encryptionKey;
+          fs.writeFileSync(keyStoragePath, JSON.stringify(keys));
+      }
+
+      res.json({ fileId: response.data.id });
   } catch (error) {
-    // Log detailed error message and stack trace
-    console.error("Error uploading file:", error.message);
-    console.error("Stack trace:", error.stack);
-
-    // If the error is from Google API, log the response details
-    if (error.response) {
-      console.error("Google API Error Response:", error.response.data);
-    }
-
-    // Send a detailed error message back to the client
-    res.status(500).send(`Failed to upload file. Please try again. Error: ${error.message}`);
+      console.error("Error uploading file:", error);
+      res.status(500).send(`Failed to upload file. Error: ${error.message}`);
   }
 });
 
@@ -287,7 +327,6 @@ app.get('/api/userProfile', isAuthenticated, async (req, res) => {
         type: file.mimeType,
         lastModified: file.modifiedTime
       })),
-      // You can still include mock data for fields not available via API
       jobTitle: 'Software Engineer',
       department: 'Engineering',
       location: 'San Francisco, CA',
@@ -345,6 +384,79 @@ app.get("/api/checkAuth", (req, res) => {
   res.json({ authenticated: !!tokens });
 });
 
+app.delete("/deleteFile/:fileId", isAuthenticated, async (req, res) => {
+  try {
+    const fileId = req.params.fileId;
+    const drive = google.drive({ version: "v3", auth: oauth2Client });
+
+    await drive.files.delete({
+      fileId: fileId,
+    });
+
+    res.json({ message: "File deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting file:", error);
+    res.status(500).json({ error: "Failed to delete file" });
+  }
+});
+
+app.get("/api/downloadFile/:fileId", async (req, res) => {
+  try {
+      const fileId = req.params.fileId;
+      const drive = google.drive({ version: "v3", auth: oauth2Client });
+
+      console.log(`Attempting to download file with ID: ${fileId}`);
+
+      const file = await drive.files.get({
+          fileId: fileId,
+          fields: 'name, mimeType, properties'
+      });
+
+      console.log(`File details:`, file.data);
+
+      const isEncrypted = file.data.properties && file.data.properties.encrypted === 'true';
+      console.log(`Is file encrypted: ${isEncrypted}`);
+
+      const response = await drive.files.get(
+          { fileId: fileId, alt: 'media' },
+          { responseType: 'arraybuffer' }
+      );
+
+      let fileContent = Buffer.from(response.data);
+      console.log(`File content length: ${fileContent.length} bytes`);
+
+      const fileName = file.data.name;
+
+      res.setHeader('Content-disposition', `attachment; filename=${fileName}`);
+      res.setHeader('Content-type', file.data.mimeType || 'application/octet-stream');
+      if (isEncrypted) {
+          res.setHeader('X-Original-Mime-Type', file.data.properties.originalMimeType || file.data.mimeType);
+      }
+      res.send(fileContent);
+      console.log(`File sent successfully: ${fileName}`);
+  } catch (error) {
+      console.error("Error downloading file:", error);
+      res.status(500).json({ error: `Failed to download file. Error: ${error.message}` });
+  }
+});
+
+app.get("/api/filePreview/:fileId", isAuthenticated, async (req, res) => {
+  try {
+    const fileId = req.params.fileId;
+    const drive = google.drive({ version: "v3", auth: oauth2Client });
+
+    const file = await drive.files.get({
+      fileId: fileId,
+      fields: 'id, name, mimeType, webViewLink, webContentLink',
+    });
+
+    res.json(file.data);
+  } catch (error) {
+    console.error("Error fetching file preview:", error);
+    res.status(500).json({ error: "Failed to fetch file preview" });
+  }
+});
+
 async function refreshTokenIfNeeded() {
   try {
     if (tokens && oauth2Client.isTokenExpiring()) {
@@ -358,6 +470,48 @@ async function refreshTokenIfNeeded() {
     tokens = null;
     fs.unlinkSync(path.join(__dirname, "tokens.json"));
   }
+}
+
+function retrieveEncryptionKey(fileId) {
+  try {
+    const keysData = fs.readFileSync(ENCRYPTION_KEYS_FILE, 'utf8');
+    const keys = JSON.parse(keysData);
+    const key = keys[fileId];
+    console.log(`Retrieved encryption key for file ${fileId}: ${key ? 'Found' : 'Not found'}`);
+    return key || null;
+  } catch (error) {
+    console.error('Error retrieving encryption key:', error);
+    return null;
+  }
+}
+
+function verifyEncryptionKeys() {
+  try {
+    const keysData = fs.readFileSync(ENCRYPTION_KEYS_FILE, 'utf8');
+    const keys = JSON.parse(keysData);
+    console.log(`Loaded ${Object.keys(keys).length} encryption keys`);
+    
+    for (const [fileId, key] of Object.entries(keys)) {
+      if (typeof key !== 'string' || key.length !== 64) {
+        console.error(`Invalid key for file ${fileId}: ${key}`);
+      }
+    }
+    
+    console.log('Encryption keys verified successfully');
+  } catch (error) {
+    console.error('Error verifying encryption keys:', error);
+  }
+}
+
+function convertWordArrayToUint8Array(wordArray) {
+  const words = wordArray.words;
+  const sigBytes = wordArray.sigBytes;
+  const u8 = new Uint8Array(sigBytes);
+  for (let i = 0; i < sigBytes; i++) {
+    const byte = (words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
+    u8[i] = byte;
+  }
+  return u8;
 }
 
 app.use(async (req, res, next) => {
@@ -374,3 +528,5 @@ app.use((req, res, next) => {
   console.log(`Received ${req.method} request for ${req.url}`);
   next();
 });
+
+verifyEncryptionKeys();

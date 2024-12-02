@@ -33,7 +33,8 @@ body {
 
 /* Logo styling */
 .login-card .logo img {
-    width: 80px;
+    width: auto;
+    height: 70px;
     margin-bottom: 20px;
 }
 
@@ -47,7 +48,7 @@ body {
 
 /* Login button styling */
 .login-btn {
-    background-color: #4285f4;
+    background-color: #000000;
     color: #ffffff;
     padding: 12px 20px;
     border: none;
@@ -71,7 +72,7 @@ body {
 
 /* Hover effect for the button */
 .login-btn:hover {
-    background-color: #357ae8;
+    background-color: #000000;
 }
 
 /* Optional: Add a subtle animation to the card on page load */
@@ -94,4 +95,5 @@ body {
     margin-top: 15px;
     text-align: center;
     font-size: 14px;
+    color: #3a6f93;
 }

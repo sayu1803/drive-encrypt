@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, screen } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
@@ -31,9 +31,12 @@ function startServer() {
 }
 
 function createWindow() {
+    const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+
     const mainWindow = new BrowserWindow({
-        width: 800,
-        height: 600,
+        width: width,
+        height: height,
+        icon: path.join(__dirname, './frontend/assets/snowden-icon.ico'), // Set your custom app icon here
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
@@ -45,6 +48,11 @@ function createWindow() {
         : `file://${path.join(__dirname, 'frontend/login.html')}`;
 
     mainWindow.loadURL(startURL);
+
+    // Check if the user's display supports full-screen mode
+    if (screen.getAllDisplays().some(display => display.size.width === width && display.size.height === height)) {
+        mainWindow.setFullScreen(false);
+    }
 
     if (isDev) {
         mainWindow.webContents.openDevTools();
@@ -71,5 +79,3 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
     if (server) server.kill('SIGTERM');
 });
-
-
